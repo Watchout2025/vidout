@@ -2482,6 +2482,16 @@ async function playMovie(movieId) {
 
         const cleanUrl = (await res.text()).trim();
 
+        if (cleanUrl.includes('#')) {
+            showDirectIframe(cleanUrl);
+            return;
+        }
+
+        if (cleanUrl.toLowerCase().endsWith('.txt')) {
+            showFallbackPlayer('movie', movieId);
+            return;
+        }
+
         if (cleanUrl && (cleanUrl.includes('.m3u8') || cleanUrl.includes('http'))) {
             initHlsPlayer(cleanUrl);
             loadSubtitlesFromGithub('movie', movieId);
@@ -2499,23 +2509,11 @@ async function playMovie(movieId) {
 }
 
 /* -------------------------------------------------------------------------
-   FALLBACK PLAYER  –  used when no stream is available for this title
-   (e.g. GitHub returns 404). Replaces the whole player with a full-screen
-   iframe pointing to an external player.
+   FULLSCREEN IFRAME  –  shared helper that replaces the whole player with a
+   full-screen iframe pointing at the given src.
    ------------------------------------------------------------------------- */
-function showFallbackPlayer(mediaType, ...idParts) {
+function _renderFullscreenIframe(src) {
     hideLoader();
-
-    let src;
-    if (mediaType === 'movie') {
-        const [movieId] = idParts;
-        src = `https://player.videasy.to/movie/${movieId}`;
-    } else if (mediaType === 'tv') {
-        const [seriesId, seasonNumber, episodeNumber] = idParts;
-        src = `https://player.videasy.to/tv/${seriesId}/${seasonNumber}/${episodeNumber}`;
-    } else {
-        return;
-    }
 
     document.body.innerHTML = '';
     document.body.style.margin = '0';
@@ -2528,6 +2526,35 @@ function showFallbackPlayer(mediaType, ...idParts) {
     iframe.setAttribute('allow', 'autoplay; fullscreen; encrypted-media; picture-in-picture');
 
     document.body.appendChild(iframe);
+}
+
+/* -------------------------------------------------------------------------
+   DIRECT STREAM IFRAME  –  used when the resolved "stream URL" is actually
+   an embed page (contains a `#`), not a raw .m3u8 — load it directly in an
+   iframe instead of handing it to HLS.js.
+   ------------------------------------------------------------------------- */
+function showDirectIframe(streamUrl) {
+    _renderFullscreenIframe(streamUrl);
+}
+
+/* -------------------------------------------------------------------------
+   FALLBACK PLAYER  –  used when no stream is available for this title
+   (e.g. GitHub returns 404). Replaces the whole player with a full-screen
+   iframe pointing to an external player.
+   ------------------------------------------------------------------------- */
+function showFallbackPlayer(mediaType, ...idParts) {
+    let src;
+    if (mediaType === 'movie') {
+        const [movieId] = idParts;
+        src = `https://player.videasy.to/movie/${movieId}`;
+    } else if (mediaType === 'tv') {
+        const [seriesId, seasonNumber, episodeNumber] = idParts;
+        src = `https://player.videasy.to/tv/${seriesId}/${seasonNumber}/${episodeNumber}`;
+    } else {
+        return;
+    }
+
+    _renderFullscreenIframe(src);
 }
 
 /* -------------------------------------------------------------------------
@@ -2568,6 +2595,16 @@ async function playEpisode(seriesId, seasonNumber, episodeNumber) {
 
         const data   = await res.json();
         const fileId = data[episodeNumber];
+
+        if (fileId && String(fileId).includes('#')) {
+            showDirectIframe(String(fileId).trim());
+            return;
+        }
+
+        if (fileId && String(fileId).trim().toLowerCase().endsWith('.txt')) {
+            showFallbackPlayer('tv', seriesId, seasonNumber, episodeNumber);
+            return;
+        }
 
         if (fileId) {
             initHlsPlayer(fileId);
