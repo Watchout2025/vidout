@@ -2482,6 +2482,11 @@ async function playMovie(movieId) {
 
         const cleanUrl = (await res.text()).trim();
 
+        if (!cleanUrl) {
+            showFallbackPlayer('movie', movieId);
+            return;
+        }
+
         if (cleanUrl.includes('#')) {
             showDirectIframe(cleanUrl);
             return;
@@ -2492,7 +2497,7 @@ async function playMovie(movieId) {
             return;
         }
 
-        if (cleanUrl && (cleanUrl.includes('.m3u8') || cleanUrl.includes('http'))) {
+        if (cleanUrl.includes('.m3u8') || cleanUrl.includes('http')) {
             initHlsPlayer(cleanUrl);
             loadSubtitlesFromGithub('movie', movieId);
             loadSubtitlesFromWyzie('movie', movieId);
@@ -2625,7 +2630,7 @@ async function playEpisode(seriesId, seasonNumber, episodeNumber) {
    START  –  Route dispatcher
              Movie:    /movie/{tmdbId}
              TV:       /tv/{tmdbId}/S{season}/E{episode}
-             Fallback: ?url=  or hardcoded default
+             Fallback: ?src=  or hardcoded default
    ------------------------------------------------------------------------- */
 async function resolveAndPlay() {
     const path = window.location.pathname;
@@ -2641,9 +2646,9 @@ async function resolveAndPlay() {
         return playEpisode(tvMatch[1], tvMatch[2], tvMatch[3]);
     }
 
-    /* Fallback: ?url= query param or hardcoded default */
+    /* Fallback: ?src= query param or hardcoded default */
     const hlsUrl =
-        urlParams.get('url') ||
+        urlParams.get('src') ||
         'https://vidmmo.com/hls/ZDBtrL1WMPQipj3EubEdG6tAKeYJ0Nt3/master.m3u8';
 
     initHlsPlayer(hlsUrl);
